@@ -1,93 +1,76 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { auth } from "../firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 
-export default function Navbar() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [user, setUser] = useState(null);
+export default function Navbar({ darkMode, toggleDarkMode }) {
   const navigate = useNavigate();
+  const user = auth.currentUser;
 
-  /* ---------- DARK MODE ---------- */
-  useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      setDarkMode(true);
-    }
-  }, []);
-
-  const toggleDarkMode = () => {
-    if (darkMode) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    }
-    setDarkMode(!darkMode);
-  };
-
-  /* ---------- AUTH ---------- */
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsub();
-  }, []);
-
-  const handleLogout = async () => {
+  const logout = async () => {
     await signOut(auth);
-    navigate("/");
+    navigate("/login");
   };
 
   return (
     <nav className="bg-white dark:bg-gray-900 shadow-md px-6 py-4 flex justify-between items-center">
-      <h2 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+      {/* LOGO */}
+      <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
         My Blog
-      </h2>
+      </h1>
 
-      <div className="flex gap-6 items-center">
-        {/* ALWAYS */}
-        <Link to="/" className="text-gray-700 dark:text-gray-200 hover:text-blue-500">
+      {/* LINKS */}
+      <div className="flex items-center gap-5">
+        <Link
+          to="/"
+          className="text-gray-800 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300 transition"
+        >
           Home
         </Link>
-
-        <Link to="/blogs" className="text-gray-700 dark:text-gray-200 hover:text-blue-500">
+        <Link
+          to="/blogs"
+          className="text-gray-800 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300 transition"
+        >
           Blogs
         </Link>
 
-        {/* ONLY WHEN LOGGED IN */}
         {user && (
           <Link
             to="/create"
-            className="text-gray-700 dark:text-gray-200 hover:text-blue-500"
+            className="text-gray-800 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300 transition"
           >
             Create
           </Link>
         )}
 
-        {/* LOGIN / LOGOUT */}
         {!user ? (
-          <Link
-            to="/login"
-            className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-          >
-            Login
-          </Link>
+          <>
+            <Link
+              to="/login"
+              className="text-gray-800 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300 transition"
+            >
+              Login
+            </Link>
+            <Link
+              to="/register"
+              className="text-gray-800 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300 transition"
+            >
+              Register
+            </Link>
+          </>
         ) : (
           <button
-            onClick={handleLogout}
-            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+            onClick={logout}
+            className="text-red-500 hover:underline"
           >
             Logout
           </button>
         )}
 
-        {/* DARK MODE */}
+        {/* 🌙 DARK MODE BUTTON */}
         <button
           onClick={toggleDarkMode}
-          className="text-xl p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+          className="text-xl p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+          title="Toggle dark mode"
         >
           {darkMode ? "☀️" : "🌙"}
         </button>

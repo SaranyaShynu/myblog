@@ -8,7 +8,7 @@ import {
   updateDoc,
   serverTimestamp,
   arrayUnion,
-  increment
+  increment,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import Loader from "../components/Loader";
@@ -23,9 +23,7 @@ export default function BlogDetails() {
   const [content, setContent] = useState("");
   const [comment, setComment] = useState("");
   const [user, setUser] = useState(null);
-  const [loading,setLoading]=useState(true);
-
-  const ADMIN_EMAIL = "saranyarajendran790@gmail.com";
+  const [loading, setLoading] = useState(true);
 
   /* ---------------- AUTH ---------------- */
   useEffect(() => {
@@ -39,34 +37,45 @@ export default function BlogDetails() {
   useEffect(() => {
     const fetchBlog = async () => {
       setLoading(true);
-      const docRef = doc(db, "blogs", id);
-      const snap = await getDoc(docRef);
+      try {
+        const docRef = doc(db, "blogs", id);
+        const snap = await getDoc(docRef);
 
-      if (snap.exists()) {
+        if (!snap.exists()) {
+          navigate("/blogs");
+          return;
+        }
+
         const data = snap.data();
         setBlog({ id: snap.id, ...data });
         setTitle(data.title);
         setContent(data.content);
-      } else {
-        navigate("/");
-      }
+      } catch (err) {
+        console.error(err);
+      } finally {
         setLoading(false);
+      }
     };
 
     fetchBlog();
   }, [id, navigate]);
 
-  /* ---------------- DELETE (ADMIN) ---------------- */
+  /* ---------------- AUTHOR CHECK ---------------- */
+  const isAuthor = user && blog?.authorId === user.uid;
+
+  /* ---------------- DELETE ---------------- */
   const handleDelete = async () => {
-    if (user?.email !== ADMIN_EMAIL) return alert("Not allowed");
+    if (!isAuthor) return alert("Not allowed");
 
     await deleteDoc(doc(db, "blogs", id));
     alert("Blog deleted");
     navigate("/blogs");
   };
 
-  /* ---------------- UPDATE (ADMIN) ---------------- */
+  /* ---------------- UPDATE ---------------- */
   const handleUpdate = async () => {
+    if (!isAuthor) return alert("Not allowed");
+
     await updateDoc(doc(db, "blogs", id), {
       title,
       content,
@@ -108,19 +117,20 @@ export default function BlogDetails() {
     setComment("");
   };
 
-  if (!blog) return <p className="text-center mt-10">Loading...</p>;
+  /* ---------------- LOADING ---------------- */
+  if (loading) {
+    return <Loader text="Loading blog..." />;
+  }
 
-  const isAdmin = user?.email === ADMIN_EMAIL;
-
-if (loading) {
-  return <Loader text="Loading blog..." />;
-}
+  if (!blog) {
+    return <p className="text-center mt-10">Blog not found</p>;
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      {/* EDIT MODE */}
       {editing ? (
         <>
+          {/* EDIT MODE */}
           <input
             className="w-full border p-2 mb-2 dark:bg-gray-700"
             value={title}
@@ -164,7 +174,7 @@ if (loading) {
               ❤️ {blog.likes || 0}
             </button>
 
-            {isAdmin && (
+            {isAuthor && (
               <>
                 <button
                   onClick={() => setEditing(true)}
@@ -193,25 +203,38 @@ if (loading) {
             )}
 
             {blog.comments?.map((c, i) => (
-              <div key={i} className="border p-3 rounded mb-2 dark:border-gray-700">
+              <div
+                key={i}
+                className="border p-3 rounded mb-2 dark:border-gray-700"
+              >
                 <p>{c.text}</p>
                 <small className="text-gray-400">{c.user}</small>
               </div>
             ))}
 
-            <textarea
-              className="w-full border p-2 mt-3 dark:bg-gray-700"
-              placeholder="Add a comment..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
+            {user && (
+              <>
+                <textarea
+                  className="w-full border p-2 mt-3 dark:bg-gray-700"
+                  placeholder="Add a comment..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                />
 
-            <button
-              onClick={addComment}
-              className="bg-black text-white px-4 py-2 mt-2 rounded"
-            >
-              Comment
-            </button>
+                <button
+                  onClick={addComment}
+                  className="bg-black text-white px-4 py-2 mt-2 rounded"
+                >
+                  Comment
+                </button>
+              </>
+            )}
+
+            {!user && (
+              <p className="text-gray-500 mt-3">
+                Login to add a comment
+              </p>
+            )}
           </div>
         </>
       )}
