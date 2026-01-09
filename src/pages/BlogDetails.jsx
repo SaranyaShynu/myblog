@@ -25,83 +25,56 @@ export default function BlogDetails() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* ---------------- AUTH ---------------- */
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
+    const unsub = onAuthStateChanged(auth, setUser);
     return () => unsub();
   }, []);
 
-  /* ---------------- FETCH BLOG ---------------- */
   useEffect(() => {
     const fetchBlog = async () => {
-      setLoading(true);
-      try {
-        const docRef = doc(db, "blogs", id);
-        const snap = await getDoc(docRef);
+      const snap = await getDoc(doc(db, "blogs", id));
+      if (!snap.exists()) return navigate("/blogs");
 
-        if (!snap.exists()) {
-          navigate("/blogs");
-          return;
-        }
-
-        const data = snap.data();
-        setBlog({ id: snap.id, ...data });
-        setTitle(data.title);
-        setContent(data.content);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+      setBlog({ id: snap.id, ...snap.data() });
+      setTitle(snap.data().title);
+      setContent(snap.data().content);
+      setLoading(false);
     };
 
     fetchBlog();
   }, [id, navigate]);
 
-  /* ---------------- AUTHOR CHECK ---------------- */
-  const isAuthor = user && blog?.authorId === user.uid;
+  if (loading) return <Loader text="Loading blog..." />;
 
-  /* ---------------- DELETE ---------------- */
+  const isAuthor = user && blog.authorId === user.uid;
+
   const handleDelete = async () => {
-    if (!isAuthor) return alert("Not allowed");
-
+    if (!isAuthor) return;
     await deleteDoc(doc(db, "blogs", id));
-    alert("Blog deleted");
     navigate("/blogs");
   };
 
-  /* ---------------- UPDATE ---------------- */
   const handleUpdate = async () => {
-    if (!isAuthor) return alert("Not allowed");
-
     await updateDoc(doc(db, "blogs", id), {
       title,
       content,
       updatedAt: serverTimestamp(),
     });
-
     setBlog({ ...blog, title, content });
     setEditing(false);
   };
 
-  /* ---------------- LIKE ---------------- */
   const handleLike = async () => {
-    await updateDoc(doc(db, "blogs", id), {
-      likes: increment(1),
-    });
-
+    await updateDoc(doc(db, "blogs", id), { likes: increment(1) });
     setBlog({ ...blog, likes: (blog.likes || 0) + 1 });
   };
 
-  /* ---------------- COMMENT ---------------- */
   const addComment = async () => {
     if (!comment.trim()) return;
 
     const newComment = {
       text: comment,
-      user: user?.email || "Anonymous",
+      user: user.email,
       createdAt: new Date().toLocaleString(),
     };
 
@@ -109,131 +82,66 @@ export default function BlogDetails() {
       comments: arrayUnion(newComment),
     });
 
-    setBlog({
-      ...blog,
-      comments: [newComment, ...(blog.comments || [])],
-    });
-
+    setBlog({ ...blog, comments: [...(blog.comments || []), newComment] });
     setComment("");
   };
 
-  /* ---------------- LOADING ---------------- */
-  if (loading) {
-    return <Loader text="Loading blog..." />;
-  }
-
-  if (!blog) {
-    return <p className="text-center mt-10">Blog not found</p>;
-  }
-
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="max-w-2xl mx-auto p-6 glass-card mt-10">
+      {blog.image && (
+        <img
+          src={blog.image}
+          className="w-full h-56 object-cover rounded-xl mb-5"
+          alt={blog.title}
+        />
+      )}
+
       {editing ? (
         <>
-          {/* EDIT MODE */}
-          <input
-            className="w-full border p-2 mb-2 dark:bg-gray-700"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <textarea
-            className="w-full border p-2 h-40 dark:bg-gray-700"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
+          <input className="input mb-2" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <textarea className="input h-40" value={content} onChange={(e) => setContent(e.target.value)} />
 
-          <div className="flex gap-3">
-            <button
-              onClick={handleUpdate}
-              className="bg-green-600 text-white px-4 py-2 rounded"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => setEditing(false)}
-              className="bg-gray-400 text-white px-4 py-2 rounded"
-            >
-              Cancel
-            </button>
+          <div className="flex gap-3 mt-3">
+            <button onClick={handleUpdate} className="btn-primary">Save</button>
+            <button onClick={() => setEditing(false)} className="btn-primary bg-gray-500">Cancel</button>
           </div>
         </>
       ) : (
         <>
-          {/* BLOG CONTENT */}
           <h1 className="text-3xl font-bold mb-3">{blog.title}</h1>
-          <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line">
-            {blog.content}
-          </p>
+          <p className="whitespace-pre-line">{blog.content}</p>
 
-          {/* ACTIONS */}
-          <div className="mt-5 flex gap-4 items-center">
-            <button
-              onClick={handleLike}
-              className="bg-pink-500 text-white px-3 py-1 rounded"
-            >
-              ❤️ {blog.likes || 0}
-            </button>
+          <div className="flex gap-4 mt-4">
+            <button onClick={handleLike}>❤️ {blog.likes || 0}</button>
 
             {isAuthor && (
               <>
-                <button
-                  onClick={() => setEditing(true)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="bg-red-600 text-white px-3 py-1 rounded"
-                >
-                  Delete
-                </button>
+                <button onClick={() => setEditing(true)}>Edit</button>
+                <button onClick={handleDelete} className="text-red-400">Delete</button>
               </>
             )}
           </div>
 
-          {/* COMMENTS */}
-          <div className="mt-8">
-            <h3 className="text-xl font-semibold mb-3">
-              Comments ({blog.comments?.length || 0})
-            </h3>
-
-            {blog.comments?.length === 0 && (
-              <p className="text-gray-500">No comments yet</p>
-            )}
+          <div className="mt-6">
+            <h3 className="font-semibold">Comments</h3>
 
             {blog.comments?.map((c, i) => (
-              <div
-                key={i}
-                className="border p-3 rounded mb-2 dark:border-gray-700"
-              >
+              <div key={i} className="mt-2 p-2 rounded bg-white/10">
                 <p>{c.text}</p>
-                <small className="text-gray-400">{c.user}</small>
+                <small>{c.user}</small>
               </div>
             ))}
 
             {user && (
               <>
                 <textarea
-                  className="w-full border p-2 mt-3 dark:bg-gray-700"
-                  placeholder="Add a comment..."
+                  className="input mt-3"
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
+                  placeholder="Add comment..."
                 />
-
-                <button
-                  onClick={addComment}
-                  className="bg-black text-white px-4 py-2 mt-2 rounded"
-                >
-                  Comment
-                </button>
+                <button onClick={addComment} className="btn-primary mt-2">Comment</button>
               </>
-            )}
-
-            {!user && (
-              <p className="text-gray-500 mt-3">
-                Login to add a comment
-              </p>
             )}
           </div>
         </>
