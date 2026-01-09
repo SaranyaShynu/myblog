@@ -14,8 +14,8 @@ export default function Navbar({ darkMode, toggleDarkMode }) {
   return (
     <nav className="bg-white dark:bg-gray-900 shadow-md px-6 py-4 flex justify-between items-center">
       {/* LOGO */}
-      <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-        My Blog
+      <h1 className="text-2xl font-bold text-pink-900 dark:text-pink-500">
+        StackStories
       </h1>
 
       {/* LINKS */}

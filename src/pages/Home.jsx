@@ -30,7 +30,7 @@ export default function Home() {
       {/* Content */}
       <div className="relative z-10 text-center px-6">
         <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
-          Welcome to My Blog ✨
+          Welcome to StackStories ✨
         </h1>
 
         <p className="text-lg text-gray-200 mb-6 max-w-2xl mx-auto">
